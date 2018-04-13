@@ -20,11 +20,15 @@
 #include "mbedtls/debug.h"
 #endif
 
+#include "mbed-trace/mbed_trace.h"
+#define TRACE_GROUP "TLSx"
+
 TLSSocket::TLSSocket() : _tcpsocket(NULL), _ssl_ca_pem(NULL) {
-    // Nothing to do.
+    mbed_trace_init();
 }
 
 TLSSocket::TLSSocket(NetworkInterface* net_iface) :  _ssl_ca_pem(NULL) {
+    mbed_trace_init();
         open(net_iface);
 }
 
@@ -122,16 +126,17 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
                                 ssl_send, ssl_recv, NULL );
 
     /* Connect to the server */
-    mbedtls_printf("Connecting to %s:%d\r\n", hostname, port);
+    tr_info("Connecting to %s:%d", hostname, port);
     ret = _tcpsocket->connect(hostname, port);
     if (ret != NSAPI_ERROR_OK) {
-        mbedtls_printf("Failed to connect\r\n");
+        tr_error("Failed to connect: %d", ret);
         _tcpsocket->close();
         return _error;
     }
+    tr_info("Connected.");
 
     /* Start the handshake, the rest will be done in onReceive() */
-    mbedtls_printf("Starting the TLS handshake...\n");
+    tr_info("Starting the TLS handshake...");
     do {
         ret = mbedtls_ssl_handshake(&_ssl);
     } while (ret != 0 && (ret == MBEDTLS_ERR_SSL_WANT_READ ||
@@ -143,23 +148,23 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     }
 
     /* It also means the handshake is done, time to print info */
-    mbedtls_printf("TLS connection to %s:%d established\r\n", hostname, port);
+    tr_info("TLS connection to %s:%d established\r\n", hostname, port);
 
     /* Prints the server certificate and verify it. */
     const size_t buf_size = 1024;
     char* buf = new char[buf_size];
     mbedtls_x509_crt_info(buf, buf_size, "\r    ",
                     mbedtls_ssl_get_peer_cert(&_ssl));
-    mbedtls_printf("Server certificate:\r\n%s\r\n", buf);
+    tr_debug("Server certificate:\r\n%s\r\n", buf);
 
     uint32_t flags = mbedtls_ssl_get_verify_result(&_ssl);
     if( flags != 0 ) {
         /* Verification failed. */
         mbedtls_x509_crt_verify_info(buf, buf_size, "\r  ! ", flags);
-        mbedtls_printf("Certificate verification failed:\r\n%s\r\n\r\n", buf);
+        tr_error("Certificate verification failed:\r\n%s", buf);
     } else {
         /* Verification succeeded. */
-        mbedtls_printf("Certificate verification passed\r\n\r\n");
+        tr_info("Certificate verification passed");
     }
     delete[] buf;
 
@@ -204,7 +209,7 @@ nsapi_size_or_error_t TLSSocket::recv(void *data, nsapi_size_t size) {
 void TLSSocket::print_mbedtls_error(const char *name, int err) {
     char *buf = new char[128];
     mbedtls_strerror(err, buf, sizeof (buf));
-    mbedtls_printf("%s() failed: -0x%04x (%d): %s\r\n", name, -err, err, buf);
+    tr_err("%s() failed: -0x%04x (%d): %s", name, -err, err, buf);
     delete[] buf;
 }
 
@@ -224,7 +229,7 @@ void TLSSocket::my_debug(void *ctx, int level, const char *file, int line,
         }
     }
 
-    mbedtls_printf("%s:%04d: |%d| %s", basename, line, level, str);
+    tr_debug("%s:%04d: |%d| %s", basename, line, level, str);
 }
 
 
@@ -234,16 +239,16 @@ int TLSSocket::my_verify(void *data, mbedtls_x509_crt *crt, int depth, uint32_t 
     char *buf = new char[buf_size];
     (void) data;
 
-    mbedtls_printf("\nVerifying certificate at depth %d:\n", depth);
+    tr_debug("\nVerifying certificate at depth %d:\n", depth);
     mbedtls_x509_crt_info(buf, buf_size - 1, "  ", crt);
-    mbedtls_printf("%s", buf);
+    tr_debug("%s", buf);
 
     if (*flags == 0)
-        mbedtls_printf("No verification issue for this certificate\n");
+        tr_info("No verification issue for this certificate\n");
     else
     {
         mbedtls_x509_crt_verify_info(buf, buf_size, "  ! ", *flags);
-        mbedtls_printf("%s\n", buf);
+        tr_info("%s\n", buf);
     }
 
     delete[] buf;
@@ -262,7 +267,7 @@ int TLSSocket::ssl_recv(void *ctx, unsigned char *buf, size_t len) {
     if(NSAPI_ERROR_WOULD_BLOCK == recv){
         return MBEDTLS_ERR_SSL_WANT_READ;
     }else if(recv < 0){
-        mbedtls_printf("Socket recv error %d\n", recv);
+        print_mbedtls_error("Socket recv error %d\n", recv);
         return -1;
     }else{
         return recv;
@@ -277,7 +282,7 @@ int TLSSocket::ssl_send(void *ctx, const unsigned char *buf, size_t len) {
     if(NSAPI_ERROR_WOULD_BLOCK == size){
         return MBEDTLS_ERR_SSL_WANT_WRITE;
     }else if(size < 0){
-        mbedtls_printf("Socket send error %d\n", size);
+        print_mbedtls_error("Socket send error %d\n", size);
         return -1;
     }else{
         return size;
