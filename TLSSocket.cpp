@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 #include "TLSSocket.h"
-#include "stdlib.h"
 
 #if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
 #include "mbedtls/debug.h"
