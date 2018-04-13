@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "TLSSocket.h"
+#include "stdlib.h"
 
 #if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
 #include "mbedtls/debug.h"
@@ -147,21 +148,23 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     /* It also means the handshake is done, time to print info */
     mbedtls_printf("TLS connection to %s:%d established\r\n", _hostname, _port);
 
-    const uint32_t buf_size = 1024;
-    char buf[buf_size] = { 0 };
+    /* Prints the server certificate and verify it. */
+    const size_t buf_size = 1024;
+    char* buf = new char[buf_size];
     mbedtls_x509_crt_info(buf, buf_size, "\r    ",
                     mbedtls_ssl_get_peer_cert(&_ssl));
-    mbedtls_printf("Server certificate:\r\n%s\r", buf);
+    mbedtls_printf("Server certificate:\r\n%s\r\n", buf);
 
     uint32_t flags = mbedtls_ssl_get_verify_result(&_ssl);
-    if( flags != 0 )
-    {
+    if( flags != 0 ) {
+        /* Verification failed. */
         mbedtls_x509_crt_verify_info(buf, buf_size, "\r  ! ", flags);
-        mbedtls_printf("Certificate verification failed:\r\n%s\r\r\n", buf);
-    }
-    else {
+        mbedtls_printf("Certificate verification failed:\r\n%s\r\n\r\n", buf);
+    } else {
+        /* Verification succeeded. */
         mbedtls_printf("Certificate verification passed\r\n\r\n");
     }
+    delete[] buf;
 
     return 0;
 }
@@ -202,9 +205,10 @@ nsapi_size_or_error_t TLSSocket::recv(void *data, nsapi_size_t size) {
 }
 
 void TLSSocket::print_mbedtls_error(const char *name, int err) {
-    char buf[128];
+    char *buf = new char[128];
     mbedtls_strerror(err, buf, sizeof (buf));
     mbedtls_printf("%s() failed: -0x%04x (%d): %s\r\n", name, -err, err, buf);
+    delete[] buf;
 }
 
 
@@ -246,6 +250,7 @@ int TLSSocket::my_verify(void *data, mbedtls_x509_crt *crt, int depth, uint32_t 
     }
 
     delete[] buf;
+
     return 0;
 }
 
