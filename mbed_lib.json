@@ -4,7 +4,7 @@
         "MBEDTLS_SHA1_C"
     ],
     "config": {
-        "debug-level": 4
+        "debug-level": 0
     },
     "target_overrides": {
         "*": {

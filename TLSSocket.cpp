@@ -106,10 +106,10 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
         */
     mbedtls_ssl_conf_authmode(&_ssl_conf, MBEDTLS_SSL_VERIFY_REQUIRED);
 
-#if DEBUG_LEVEL > 0
+#if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
     mbedtls_ssl_conf_verify(&_ssl_conf, my_verify, NULL);
     mbedtls_ssl_conf_dbg(&_ssl_conf, my_debug, NULL);
-    mbedtls_debug_set_threshold(DEBUG_LEVEL);
+    mbedtls_debug_set_threshold(MBED_CONF_TLS_SOCKET_DEBUG_LEVEL);
 #endif
 
     if ((ret = mbedtls_ssl_setup(&_ssl, &_ssl_conf)) != 0) {
