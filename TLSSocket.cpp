@@ -68,8 +68,6 @@ void TLSSocket::set_ssl_ca_pem(const char* ssl_ca_pem) {
 nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     nsapi_error_t _error = 0;
     const char DRBG_PERS[] = "mbed TLS client";
-    const char* _hostname = hostname;
-    int _port = port;
 
     /*
         * Initialize TLS-related stuf.
@@ -119,14 +117,14 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
         return _error;
     }
 
-    mbedtls_ssl_set_hostname(&_ssl, _hostname);
+    mbedtls_ssl_set_hostname(&_ssl, hostname);
 
     mbedtls_ssl_set_bio(&_ssl, static_cast<void *>(_tcpsocket),
                                 ssl_send, ssl_recv, NULL );
 
     /* Connect to the server */
-    mbedtls_printf("Connecting to %s:%d\r\n", _hostname, _port);
-    ret = _tcpsocket->connect(_hostname, _port);
+    mbedtls_printf("Connecting to %s:%d\r\n", hostname, port);
+    ret = _tcpsocket->connect(hostname, port);
     if (ret != NSAPI_ERROR_OK) {
         mbedtls_printf("Failed to connect\r\n");
         _tcpsocket->close();
@@ -146,7 +144,7 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     }
 
     /* It also means the handshake is done, time to print info */
-    mbedtls_printf("TLS connection to %s:%d established\r\n", _hostname, _port);
+    mbedtls_printf("TLS connection to %s:%d established\r\n", hostname, port);
 
     /* Prints the server certificate and verify it. */
     const size_t buf_size = 1024;
