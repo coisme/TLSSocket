@@ -33,7 +33,6 @@ TLSSocket::TLSSocket(NetworkInterface* net_iface) :  _ssl_ca_pem(NULL) {
 }
 
 TLSSocket::~TLSSocket() {
-    close();
 }
 
 nsapi_error_t TLSSocket::open(NetworkInterface* net_iface) {
