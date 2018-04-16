@@ -77,7 +77,7 @@ public:
      *
      * @param Root CA Certification in PEM format
      */
-    void set_root_ca_pem(const char* ssl_ca_pem);
+    void set_root_ca_pem(const char* root_ca_pem);
 
     /** Connects TLS socket to a remote host
      *
@@ -92,6 +92,21 @@ public:
      *  @return         0 on success, negative error code on failure
      */
     nsapi_error_t connect(const char* hostname, uint16_t port);
+
+    /** Connects TLS socket to a remote host
+     *
+     *  Initiates a connection to a remote server specified by either
+     *  a domain name or an IP address and a port.
+     * 
+     *  Root CA certification must be set by set_ssl_ca_pem() before
+     *  call this function.
+     *
+     *  @param host     Hostname of the remote host
+     *  @param port     Port of the remote host
+     *  @param root_ca_pem Root CA Certification in PEM format
+     *  @return         0 on success, negative error code on failure
+     */
+    nsapi_error_t connect(const char* hostname, uint16_t port, const char* root_ca_pem);
 
     /** Send data over a TLS socket
      *
