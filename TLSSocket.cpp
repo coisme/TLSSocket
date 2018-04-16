@@ -23,42 +23,59 @@
 #include "mbed-trace/mbed_trace.h"
 #define TRACE_GROUP "TLSx"
 
-TLSSocket::TLSSocket() : _tcpsocket(NULL), _ssl_ca_pem(NULL) {
+TLSSocket::TLSSocket() : isOpen(false), _tcpsocket(NULL), _ssl_ca_pem(NULL) {
     mbed_trace_init();
 }
 
-TLSSocket::TLSSocket(NetworkInterface* net_iface) :  _ssl_ca_pem(NULL) {
+TLSSocket::TLSSocket(NetworkInterface* net_iface) :  isOpen(false), _ssl_ca_pem(NULL) {
     mbed_trace_init();
     open(net_iface);
 }
 
 TLSSocket::~TLSSocket() {
+    if(_tcpsocket != NULL)
+        // Socket is still open.
+        close();
 }
 
 nsapi_error_t TLSSocket::open(NetworkInterface* net_iface) {
+    if(_tcpsocket != NULL)
+        // Socket is already open.
+        return NSAPI_ERROR_OK;
+
+    _tcpsocket = new TCPSocket();
+    _tcpsocket->set_blocking(false);
+
+    nsapi_error_t ret = _tcpsocket->open(net_iface);
+    if(ret != NSAPI_ERROR_OK) {
+        delete _tcpsocket;
+        _tcpsocket = NULL;
+        return ret;
+    }
+
     mbedtls_entropy_init(&_entropy);
     mbedtls_ctr_drbg_init(&_ctr_drbg);
     mbedtls_x509_crt_init(&_cacert);
     mbedtls_ssl_init(&_ssl);
     mbedtls_ssl_config_init(&_ssl_conf);
-
-    _tcpsocket = new TCPSocket();
-    _tcpsocket->set_blocking(false);
     
-    return _tcpsocket->open(net_iface);
+    return ret;
 }
 
 nsapi_error_t TLSSocket::close() {
+    if(!_tcpsocket)
+        // Socket is not open. Nothing to do here.
+        return NSAPI_ERROR_OK;
+
     mbedtls_entropy_free(&_entropy);
     mbedtls_ctr_drbg_free(&_ctr_drbg);
     mbedtls_x509_crt_free(&_cacert);
     mbedtls_ssl_free(&_ssl);
     mbedtls_ssl_config_free(&_ssl_conf);
 
-    if (_tcpsocket) {
-        _tcpsocket->close();
-        delete _tcpsocket;
-    }
+    _tcpsocket->close();
+    delete _tcpsocket;
+    _tcpsocket = NULL;
 
     return 0;
 }
