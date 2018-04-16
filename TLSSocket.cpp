@@ -29,7 +29,7 @@ TLSSocket::TLSSocket() : _tcpsocket(NULL), _ssl_ca_pem(NULL) {
 
 TLSSocket::TLSSocket(NetworkInterface* net_iface) :  _ssl_ca_pem(NULL) {
     mbed_trace_init();
-        open(net_iface);
+    open(net_iface);
 }
 
 TLSSocket::~TLSSocket() {
