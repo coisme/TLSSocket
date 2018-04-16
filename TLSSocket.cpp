@@ -187,7 +187,7 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     return 0;
 }
 
-nsapi_error_t connect(const char* hostname, uint16_t port, const char* root_ca_pem) {
+nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port, const char* root_ca_pem) {
     set_root_ca_pem(root_ca_pem);
     return connect(hostname, port);
 }
