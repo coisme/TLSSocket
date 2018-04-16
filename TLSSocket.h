@@ -77,7 +77,7 @@ public:
      *
      * @param Root CA Certification in PEM format
      */
-    void set_ssl_ca_pem(const char* ssl_ca_pem);
+    void set_root_ca_pem(const char* ssl_ca_pem);
 
     /** Connects TLS socket to a remote host
      *

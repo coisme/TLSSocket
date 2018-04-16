@@ -80,7 +80,7 @@ nsapi_error_t TLSSocket::close() {
     return 0;
 }
 
-void TLSSocket::set_ssl_ca_pem(const char* ssl_ca_pem) {
+void TLSSocket::set_root_ca_pem(const char* ssl_ca_pem) {
     _ssl_ca_pem = ssl_ca_pem;
 }
 
