@@ -23,11 +23,11 @@
 #include "mbed-trace/mbed_trace.h"
 #define TRACE_GROUP "TLSx"
 
-TLSSocket::TLSSocket() : isOpen(false), _tcpsocket(NULL), _ssl_ca_pem(NULL) {
+TLSSocket::TLSSocket() : _tcpsocket(NULL), _ssl_ca_pem(NULL) {
     mbed_trace_init();
 }
 
-TLSSocket::TLSSocket(NetworkInterface* net_iface) :  isOpen(false), _ssl_ca_pem(NULL) {
+TLSSocket::TLSSocket(NetworkInterface* net_iface) : _ssl_ca_pem(NULL) {
     mbed_trace_init();
     open(net_iface);
 }
