@@ -38,21 +38,85 @@ public:
      */
     TLSSocket();
 
+    /** Create a socket on a network interface
+     *
+     *  Creates and opens a socket on the network stack of the given
+     *  network interface.
+     *
+     *  @param net_iface    Network stack as target for socket
+     */
     TLSSocket(NetworkInterface* net_iface);
 
+    /** Destroy a socket
+     *
+     *  Closes socket if the socket is still open
+     */
     ~TLSSocket();
 
+    /** Connects TLS socket to a remote host
+     *
+     *  Initiates a connection to a remote server specified by either
+     *  a domain name or an IP address and a port.
+     *
+     *  @param host     Hostname of the remote host
+     *  @param port     Port of the remote host
+     *  @return         0 on success, negative error code on failure
+     */
     nsapi_error_t open(NetworkInterface* net_iface);
 
+    /** Close the socket
+     *
+     *  Closes any open connection and deallocates any memory associated
+     *  with the socket. Called from destructor if socket is not closed.
+     *
+     *  @return         0 on success, negative error code on failure
+     */
     nsapi_error_t close();
 
-
+    /** Sets the certification of Root CA.
+     *
+     * @param Root CA Certification in PEM format
+     */
     void set_ssl_ca_pem(const char* ssl_ca_pem);
 
+    /** Connects TLS socket to a remote host
+     *
+     *  Initiates a connection to a remote server specified by either
+     *  a domain name or an IP address and a port.
+     * 
+     *  Root CA certification must be set by set_ssl_ca_pem() before
+     *  call this function.
+     *
+     *  @param host     Hostname of the remote host
+     *  @param port     Port of the remote host
+     *  @return         0 on success, negative error code on failure
+     */
     nsapi_error_t connect(const char* hostname, uint16_t port);
 
+    /** Send data over a TLS socket
+     *
+     *  The socket must be connected to a remote host. Returns the number of
+     *  bytes sent from the buffer.
+     *
+     *  @param data     Buffer of data to send to the host
+     *  @param size     Size of the buffer in bytes
+     *  @return         Number of sent bytes on success, negative error
+     *                  code on failure
+     */
     nsapi_error_t send(const void *data, nsapi_size_t size);
 
+    /** Receive data over a TLS socket
+     *
+     *  The socket must be connected to a remote host. Returns the number of
+     *  bytes received into the buffer.
+     *
+     *  @param data     Destination buffer for data received from the host
+     *  @param size     Size of the buffer in bytes
+     *  @return         Number of received bytes on success, negative error
+     *                  code on failure. If no data is available to be received
+     *                  and the peer has performed an orderly shutdown,
+     *                  recv() returns 0.
+     */
     nsapi_size_or_error_t recv(void *data, nsapi_size_t size);
 
 protected:
