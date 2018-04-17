@@ -221,10 +221,14 @@ nsapi_size_or_error_t TLSSocket::recv(void *data, nsapi_size_t size) {
             offset += ret;
     } while (0 < ret || ret == MBEDTLS_ERR_SSL_WANT_READ || 
             ret == MBEDTLS_ERR_SSL_WANT_WRITE);
-    if (ret < 0) {
+    if ((ret < 0) && (ret != MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)) {
         print_mbedtls_error("mbedtls_ssl_read", ret);
-        return -1;
+        return ret;
     }
+    /* MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY is not considered as error. 
+     * Just ignre here. Once connection is closed, mbedtls_ssl_read() 
+     * will return 0.
+     */
     return offset;
 }
 
