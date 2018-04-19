@@ -16,19 +16,13 @@
  */
 #include "TLSSocket.h"
 
-#if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
-#include "mbedtls/debug.h"
-#endif
-
-#include "mbed-trace/mbed_trace.h"
 #define TRACE_GROUP "TLSx"
+#include "mbed-trace/mbed_trace.h"
 
 TLSSocket::TLSSocket() : _tcpsocket(NULL), _ssl_ca_pem(NULL) {
-    mbed_trace_init();
 }
 
 TLSSocket::TLSSocket(NetworkInterface* net_iface) : _ssl_ca_pem(NULL) {
-    mbed_trace_init();
     open(net_iface);
 }
 
