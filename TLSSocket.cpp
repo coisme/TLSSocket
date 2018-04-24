@@ -19,59 +19,13 @@
 #define TRACE_GROUP "TLSx"
 #include "mbed-trace/mbed_trace.h"
 
-TLSSocket::TLSSocket() : _tcpsocket(NULL), _ssl_ca_pem(NULL) {
-}
-
-TLSSocket::TLSSocket(NetworkInterface* net_iface) : _ssl_ca_pem(NULL) {
-    open(net_iface);
+TLSSocket::TLSSocket() : _ssl_ca_pem(NULL) {
+    tls_init();
 }
 
 TLSSocket::~TLSSocket() {
-    if(_tcpsocket != NULL)
-        // Socket is still open.
-        close();
-}
-
-nsapi_error_t TLSSocket::open(NetworkInterface* net_iface) {
-    if(_tcpsocket != NULL)
-        // Socket is already open.
-        return NSAPI_ERROR_OK;
-
-    _tcpsocket = new TCPSocket();
-    _tcpsocket->set_blocking(false);
-
-    nsapi_error_t ret = _tcpsocket->open(net_iface);
-    if(ret != NSAPI_ERROR_OK) {
-        delete _tcpsocket;
-        _tcpsocket = NULL;
-        return ret;
-    }
-
-    mbedtls_entropy_init(&_entropy);
-    mbedtls_ctr_drbg_init(&_ctr_drbg);
-    mbedtls_x509_crt_init(&_cacert);
-    mbedtls_ssl_init(&_ssl);
-    mbedtls_ssl_config_init(&_ssl_conf);
-    
-    return ret;
-}
-
-nsapi_error_t TLSSocket::close() {
-    if(!_tcpsocket)
-        // Socket is not open. Nothing to do here.
-        return NSAPI_ERROR_OK;
-
-    mbedtls_entropy_free(&_entropy);
-    mbedtls_ctr_drbg_free(&_ctr_drbg);
-    mbedtls_x509_crt_free(&_cacert);
-    mbedtls_ssl_free(&_ssl);
-    mbedtls_ssl_config_free(&_ssl_conf);
-
-    _tcpsocket->close();
-    delete _tcpsocket;
-    _tcpsocket = NULL;
-
-    return 0;
+    tls_free();
+    close();
 }
 
 void TLSSocket::set_root_ca_pem(const char* ssl_ca_pem) {
@@ -82,9 +36,11 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     nsapi_error_t _error = 0;
     const char DRBG_PERS[] = "mbed TLS client";
 
+    set_blocking(false);
+
     /*
-        * Initialize TLS-related stuf.
-        */
+     * Initialize TLS-related stuf.
+     */
     int ret;
     if ((ret = mbedtls_ctr_drbg_seed(&_ctr_drbg, mbedtls_entropy_func, &_entropy,
                         (const unsigned char *) DRBG_PERS,
@@ -114,8 +70,8 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     mbedtls_ssl_conf_rng(&_ssl_conf, mbedtls_ctr_drbg_random, &_ctr_drbg);
 
     /* It is possible to disable authentication by passing
-        * MBEDTLS_SSL_VERIFY_NONE in the call to mbedtls_ssl_conf_authmode()
-        */
+     * MBEDTLS_SSL_VERIFY_NONE in the call to mbedtls_ssl_conf_authmode()
+     */
     mbedtls_ssl_conf_authmode(&_ssl_conf, MBEDTLS_SSL_VERIFY_REQUIRED);
 
 #if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
@@ -132,15 +88,15 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
 
     mbedtls_ssl_set_hostname(&_ssl, hostname);
 
-    mbedtls_ssl_set_bio(&_ssl, static_cast<void *>(_tcpsocket),
+    mbedtls_ssl_set_bio(&_ssl, static_cast<void *>(this),
                                 ssl_send, ssl_recv, NULL );
 
     /* Connect to the server */
     tr_info("Connecting to %s:%d", hostname, port);
-    ret = _tcpsocket->connect(hostname, port);
+    ret = TCPSocket::connect(hostname, port);
     if (ret != NSAPI_ERROR_OK) {
         tr_error("Failed to connect: %d", ret);
-        _tcpsocket->close();
+        TCPSocket::close();
         return _error;
     }
     tr_info("Connected.");
@@ -153,7 +109,7 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
             ret == MBEDTLS_ERR_SSL_WANT_WRITE));
     if (ret < 0) {
         print_mbedtls_error("mbedtls_ssl_handshake", ret);
-        _tcpsocket->close();
+        TCPSocket::close();
         return ret;
     }
 
@@ -307,4 +263,20 @@ int TLSSocket::ssl_send(void *ctx, const unsigned char *buf, size_t len) {
     }else{
         return size;
     }
+}
+
+void TLSSocket::tls_init() {
+    mbedtls_entropy_init(&_entropy);
+    mbedtls_ctr_drbg_init(&_ctr_drbg);
+    mbedtls_x509_crt_init(&_cacert);
+    mbedtls_ssl_init(&_ssl);
+    mbedtls_ssl_config_init(&_ssl_conf);
+}
+
+void TLSSocket::tls_free() {
+    mbedtls_entropy_free(&_entropy);
+    mbedtls_ctr_drbg_free(&_ctr_drbg);
+    mbedtls_x509_crt_free(&_cacert);
+    mbedtls_ssl_free(&_ssl);
+    mbedtls_ssl_config_free(&_ssl_conf);
 }
