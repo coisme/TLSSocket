@@ -42,7 +42,7 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
      * Initialize TLS-related stuf.
      */
     int ret;
-    if ((ret = mbedtls_ctr_drbg_seed(&_ctr_drbg, mbedtls_entropy_func, &_entropy,
+    if ((ret = mbedtls_ctr_drbg_seed(_ctr_drbg, mbedtls_entropy_func, _entropy,
                         (const unsigned char *) DRBG_PERS,
                         sizeof (DRBG_PERS))) != 0) {
         print_mbedtls_error("mbedtls_crt_drbg_init", ret);
@@ -50,14 +50,14 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
         return _error;
     }
 
-    if ((ret = mbedtls_x509_crt_parse(&_cacert, (unsigned char *)_ssl_ca_pem,
+    if ((ret = mbedtls_x509_crt_parse(_cacert, (unsigned char *)_ssl_ca_pem,
                         strlen(_ssl_ca_pem) + 1)) != 0) {
         print_mbedtls_error("mbedtls_x509_crt_parse", ret);
         _error = ret;
         return _error;
     }
 
-    if ((ret = mbedtls_ssl_config_defaults(&_ssl_conf,
+    if ((ret = mbedtls_ssl_config_defaults(_ssl_conf,
                     MBEDTLS_SSL_IS_CLIENT,
                     MBEDTLS_SSL_TRANSPORT_STREAM,
                     MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
@@ -66,29 +66,29 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
         return _error;
     }
 
-    mbedtls_ssl_conf_ca_chain(&_ssl_conf, &_cacert, NULL);
-    mbedtls_ssl_conf_rng(&_ssl_conf, mbedtls_ctr_drbg_random, &_ctr_drbg);
+    mbedtls_ssl_conf_ca_chain(_ssl_conf, _cacert, NULL);
+    mbedtls_ssl_conf_rng(_ssl_conf, mbedtls_ctr_drbg_random, _ctr_drbg);
 
     /* It is possible to disable authentication by passing
      * MBEDTLS_SSL_VERIFY_NONE in the call to mbedtls_ssl_conf_authmode()
      */
-    mbedtls_ssl_conf_authmode(&_ssl_conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+    mbedtls_ssl_conf_authmode(_ssl_conf, MBEDTLS_SSL_VERIFY_REQUIRED);
 
 #if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
-    mbedtls_ssl_conf_verify(&_ssl_conf, my_verify, NULL);
-    mbedtls_ssl_conf_dbg(&_ssl_conf, my_debug, NULL);
+    mbedtls_ssl_conf_verify(_ssl_conf, my_verify, NULL);
+    mbedtls_ssl_conf_dbg(_ssl_conf, my_debug, NULL);
     mbedtls_debug_set_threshold(MBED_CONF_TLS_SOCKET_DEBUG_LEVEL);
 #endif
 
-    if ((ret = mbedtls_ssl_setup(&_ssl, &_ssl_conf)) != 0) {
+    if ((ret = mbedtls_ssl_setup(_ssl, _ssl_conf)) != 0) {
         print_mbedtls_error("mbedtls_ssl_setup", ret);
         _error = ret;
         return _error;
     }
 
-    mbedtls_ssl_set_hostname(&_ssl, hostname);
+    mbedtls_ssl_set_hostname(_ssl, hostname);
 
-    mbedtls_ssl_set_bio(&_ssl, static_cast<void *>(this),
+    mbedtls_ssl_set_bio(_ssl, static_cast<void *>(this),
                                 ssl_send, ssl_recv, NULL );
 
     /* Connect to the server */
@@ -104,7 +104,7 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     /* Start the handshake, the rest will be done in onReceive() */
     tr_info("Starting the TLS handshake...");
     do {
-        ret = mbedtls_ssl_handshake(&_ssl);
+        ret = mbedtls_ssl_handshake(_ssl);
     } while (ret != 0 && (ret == MBEDTLS_ERR_SSL_WANT_READ ||
             ret == MBEDTLS_ERR_SSL_WANT_WRITE));
     if (ret < 0) {
@@ -120,10 +120,10 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     const size_t buf_size = 1024;
     char* buf = new char[buf_size];
     mbedtls_x509_crt_info(buf, buf_size, "\r    ",
-                    mbedtls_ssl_get_peer_cert(&_ssl));
+                    mbedtls_ssl_get_peer_cert(_ssl));
     tr_debug("Server certificate:\r\n%s\r\n", buf);
 
-    uint32_t flags = mbedtls_ssl_get_verify_result(&_ssl);
+    uint32_t flags = mbedtls_ssl_get_verify_result(_ssl);
     if( flags != 0 ) {
         /* Verification failed. */
         mbedtls_x509_crt_verify_info(buf, buf_size, "\r  ! ", flags);
@@ -147,7 +147,7 @@ nsapi_error_t TLSSocket::send(const void *data, nsapi_size_t size) {
     int ret = 0;
     unsigned int offset = 0;
     do {
-        ret = mbedtls_ssl_write(&_ssl,
+        ret = mbedtls_ssl_write(_ssl,
                                 (const unsigned char *) data + offset,
                                 size - offset);
         if (ret > 0)
@@ -165,7 +165,7 @@ nsapi_size_or_error_t TLSSocket::recv(void *data, nsapi_size_t size) {
     int ret = 0;
     unsigned int offset = 0;
     do {
-        ret = mbedtls_ssl_read(&_ssl, (unsigned char *) data + offset,
+        ret = mbedtls_ssl_read(_ssl, (unsigned char *) data + offset,
                                 size - offset);
         if (ret > 0)
             offset += ret;
@@ -266,17 +266,29 @@ int TLSSocket::ssl_send(void *ctx, const unsigned char *buf, size_t len) {
 }
 
 void TLSSocket::tls_init() {
-    mbedtls_entropy_init(&_entropy);
-    mbedtls_ctr_drbg_init(&_ctr_drbg);
-    mbedtls_x509_crt_init(&_cacert);
-    mbedtls_ssl_init(&_ssl);
-    mbedtls_ssl_config_init(&_ssl_conf);
+    _entropy = new mbedtls_entropy_context;
+    _ctr_drbg = new mbedtls_ctr_drbg_context;
+    _cacert = new mbedtls_x509_crt;
+    _ssl = new mbedtls_ssl_context;
+    _ssl_conf = new mbedtls_ssl_config;
+
+    mbedtls_entropy_init(_entropy);
+    mbedtls_ctr_drbg_init(_ctr_drbg);
+    mbedtls_x509_crt_init(_cacert);
+    mbedtls_ssl_init(_ssl);
+    mbedtls_ssl_config_init(_ssl_conf);
 }
 
 void TLSSocket::tls_free() {
-    mbedtls_entropy_free(&_entropy);
-    mbedtls_ctr_drbg_free(&_ctr_drbg);
-    mbedtls_x509_crt_free(&_cacert);
-    mbedtls_ssl_free(&_ssl);
-    mbedtls_ssl_config_free(&_ssl_conf);
+    mbedtls_entropy_free(_entropy);
+    mbedtls_ctr_drbg_free(_ctr_drbg);
+    mbedtls_x509_crt_free(_cacert);
+    mbedtls_ssl_free(_ssl);
+    mbedtls_ssl_config_free(_ssl_conf);
+
+    delete _entropy;
+    delete _ctr_drbg;
+    delete _cacert;
+    delete _ssl;
+    delete _ssl_conf;
 }

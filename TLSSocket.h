@@ -154,11 +154,11 @@ protected:
 private:
     const char* _ssl_ca_pem;
 
-    mbedtls_entropy_context _entropy;
-    mbedtls_ctr_drbg_context _ctr_drbg;
-    mbedtls_x509_crt _cacert;
-    mbedtls_ssl_context _ssl;
-    mbedtls_ssl_config _ssl_conf;
+    mbedtls_entropy_context* _entropy;
+    mbedtls_ctr_drbg_context* _ctr_drbg;
+    mbedtls_x509_crt* _cacert;
+    mbedtls_ssl_context* _ssl;
+    mbedtls_ssl_config* _ssl_conf;
 
     /* Allocates required memory */
     void tls_init(void);
