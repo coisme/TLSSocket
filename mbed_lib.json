@@ -4,7 +4,12 @@
         "MBEDTLS_SHA1_C"
     ],
     "config": {
-        "debug-level": 0
+        "debug-level": 0,
+        "root-ca-cert-pem": {
+            "help": "String of the root ca certification. Do not forget to escape new-lines.",
+            "value": null,
+            "requried": false
+        }
     },
     "target_overrides": {
         "*": {
