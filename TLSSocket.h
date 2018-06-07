@@ -46,7 +46,7 @@ public:
      *  @param net_iface    Network stack as target for socket
      */
     template <typename S>
-    TLSSocket(S *stack) : _ssl_ca_pem(NULL)
+    TLSSocket(S *stack) : _ssl_ca_pem(NULL), _ssl_cli_pem(NULL), _ssl_pk_pem(NULL)
     {
         tls_init();
         open(stack);
@@ -63,6 +63,15 @@ public:
      * @param Root CA Certification in PEM format
      */
     void set_root_ca_pem(const char* root_ca_pem);
+
+    /** Sets server certificate, client certificate, and client private key.
+     * 
+     * @param root_ca_pem Certification of Root CA in PEM format.
+     * @param client_cert_pem Client certification in PEM format.
+     * @param client_private_key Client private key in PEM format.
+     */
+    void set_cert_key(const char* root_ca_pem = NULL,
+            const char* client_cert_pem = NULL, const char* client_private_key = NULL);
 
     /** Connects TLS socket to a remote host
      *
@@ -89,9 +98,12 @@ public:
      *  @param host     Hostname of the remote host
      *  @param port     Port of the remote host
      *  @param root_ca_pem Root CA Certification in PEM format
+     *  @param client_cert_pem Client certification in PEM format
+     *  @param client_pk_pem Client private key in PEM format
      *  @return         0 on success, negative error code on failure
      */
-    nsapi_error_t connect(const char* hostname, uint16_t port, const char* root_ca_pem);
+    nsapi_error_t connect(const char* hostname, uint16_t port, const char* root_ca_pem, 
+            const char* client_cert_pem = NULL, const char* client_pk_pem = NULL);
 
     /** Send data over a TLS socket
      *
@@ -153,10 +165,14 @@ protected:
 
 private:
     const char* _ssl_ca_pem;
+    const char* _ssl_cli_pem;
+    const char* _ssl_pk_pem;
 
     mbedtls_entropy_context* _entropy;
     mbedtls_ctr_drbg_context* _ctr_drbg;
     mbedtls_x509_crt* _cacert;
+    mbedtls_x509_crt* _clicert;
+    mbedtls_pk_context* _pkctx;
     mbedtls_ssl_context* _ssl;
     mbedtls_ssl_config* _ssl_conf;
 
