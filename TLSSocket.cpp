@@ -321,6 +321,9 @@ void TLSSocket::tls_init() {
     mbedtls_ssl_init(_ssl);
     mbedtls_ssl_config_init(_ssl_conf);
     mbedtls_pk_init(_pkctx);
+#ifdef MBED_CONF_TLS_SOCKET_ROOT_CA_CERT_PEM
+    set_root_ca_pem(MBED_CONF_TLS_SOCKET_ROOT_CA_CERT_PEM);
+#endif
 }
 
 void TLSSocket::tls_free() {
