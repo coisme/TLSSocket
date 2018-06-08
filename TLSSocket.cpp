@@ -18,6 +18,7 @@
 
 #define TRACE_GROUP "TLSx"
 #include "mbed-trace/mbed_trace.h"
+#include "mbedtls/debug.h"
 
 TLSSocket::TLSSocket() : _ssl_ca_pem(NULL) {
     tls_init();
@@ -31,6 +32,15 @@ TLSSocket::~TLSSocket() {
 void TLSSocket::set_root_ca_pem(const char* ssl_ca_pem) {
     _ssl_ca_pem = ssl_ca_pem;
 }
+
+void TLSSocket::set_cert_key(const char* root_ca_pem,
+            const char* client_cert_pem, 
+            const char* client_private_key) {
+    _ssl_ca_pem = root_ca_pem;
+    _ssl_cli_pem = client_cert_pem;
+    _ssl_pk_pem = client_private_key;
+}
+
 
 nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     nsapi_error_t _error = 0;
@@ -50,11 +60,32 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
         return _error;
     }
 
+    /* Parse CA certification */
     if ((ret = mbedtls_x509_crt_parse(_cacert, (unsigned char *)_ssl_ca_pem,
                         strlen(_ssl_ca_pem) + 1)) != 0) {
         print_mbedtls_error("mbedtls_x509_crt_parse", ret);
         _error = ret;
         return _error;
+    }
+
+    /* Parse client certification and private key if it exists. */
+    bool isClientAuth = false;
+    if((NULL != _ssl_cli_pem) && (NULL != _ssl_pk_pem)) {
+        mbedtls_x509_crt_init(_clicert);
+        if((ret = mbedtls_x509_crt_parse(_clicert, (unsigned char *)_ssl_cli_pem,
+                strlen(_ssl_cli_pem) + 1)) != 0) {
+            print_mbedtls_error("mbedtls_x509_crt_parse", ret);
+            _error = ret;
+            return _error;
+        }
+    	mbedtls_pk_init(_pkctx);
+        if((ret = mbedtls_pk_parse_key(_pkctx, (unsigned char *)_ssl_pk_pem,
+                strlen(_ssl_pk_pem) + 1, NULL, 0)) != 0) {
+            print_mbedtls_error("mbedtls_pk_parse_key", ret);
+            _error = ret;
+            return _error;
+        }
+        isClientAuth = true;
     }
 
     if ((ret = mbedtls_ssl_config_defaults(_ssl_conf,
@@ -90,6 +121,14 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
 
     mbedtls_ssl_set_bio(_ssl, static_cast<void *>(this),
                                 ssl_send, ssl_recv, NULL );
+
+    if(isClientAuth) {
+        if((ret = mbedtls_ssl_conf_own_cert(_ssl_conf, _clicert, _pkctx)) != 0) {
+            print_mbedtls_error("mbedtls_ssl_conf_own_cert", ret);
+            _error = ret;
+            return _error;
+        }
+    }
 
     /* Connect to the server */
     tr_info("Connecting to %s:%d", hostname, port);
@@ -137,8 +176,9 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
     return 0;
 }
 
-nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port, const char* root_ca_pem) {
-    set_root_ca_pem(root_ca_pem);
+nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port, const char* root_ca_pem, 
+            const char* client_cert_pem, const char* client_pk_pem) {
+    set_cert_key(root_ca_pem, client_cert_pem, client_pk_pem);
     return connect(hostname, port);
 }
 
@@ -269,15 +309,18 @@ void TLSSocket::tls_init() {
     _entropy = new mbedtls_entropy_context;
     _ctr_drbg = new mbedtls_ctr_drbg_context;
     _cacert = new mbedtls_x509_crt;
+    _clicert = new mbedtls_x509_crt;
+    _pkctx = new mbedtls_pk_context;
     _ssl = new mbedtls_ssl_context;
     _ssl_conf = new mbedtls_ssl_config;
 
     mbedtls_entropy_init(_entropy);
     mbedtls_ctr_drbg_init(_ctr_drbg);
     mbedtls_x509_crt_init(_cacert);
+    mbedtls_x509_crt_init(_clicert);
     mbedtls_ssl_init(_ssl);
     mbedtls_ssl_config_init(_ssl_conf);
-
+    mbedtls_pk_init(_pkctx);
 #ifdef MBED_CONF_TLS_SOCKET_ROOT_CA_CERT_PEM
     set_root_ca_pem(MBED_CONF_TLS_SOCKET_ROOT_CA_CERT_PEM);
 #endif
@@ -287,12 +330,16 @@ void TLSSocket::tls_free() {
     mbedtls_entropy_free(_entropy);
     mbedtls_ctr_drbg_free(_ctr_drbg);
     mbedtls_x509_crt_free(_cacert);
+    mbedtls_x509_crt_free(_clicert);
     mbedtls_ssl_free(_ssl);
     mbedtls_ssl_config_free(_ssl_conf);
+    mbedtls_pk_free(_pkctx);
 
     delete _entropy;
     delete _ctr_drbg;
     delete _cacert;
+    delete _clicert;
     delete _ssl;
     delete _ssl_conf;
+    delete _pkctx;
 }
