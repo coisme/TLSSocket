@@ -30,10 +30,10 @@ TLSSocket::~TLSSocket() {
 }
 
 void TLSSocket::set_root_ca_cert(const char* root_ca_pem) {
-    _ssl_ca_pem = ssl_ca_pem;
+    _ssl_ca_pem = root_ca_pem;
 }
 
-void TLSSocket::set_cert_key(const char* client_cert_pem, 
+void TLSSocket::set_client_cert_key(const char* client_cert_pem, 
         const char* client_private_key_pem) {
     _ssl_cli_pem = client_cert_pem;
     _ssl_pk_pem = client_private_key_pem;
@@ -176,7 +176,8 @@ nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port) {
 
 nsapi_error_t TLSSocket::connect(const char* hostname, uint16_t port, const char* root_ca_pem, 
             const char* client_cert_pem, const char* client_pk_pem) {
-    set_cert_key(root_ca_pem, client_cert_pem, client_pk_pem);
+    set_root_ca_cert(root_ca_pem); 
+    set_client_cert_key(client_cert_pem, client_pk_pem);
     return connect(hostname, port);
 }
 
