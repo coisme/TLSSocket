@@ -62,16 +62,14 @@ public:
      *
      * @param Root CA Certification in PEM format
      */
-    void set_root_ca_pem(const char* root_ca_pem);
+    void set_root_ca_cert(const char* root_ca_pem);
 
     /** Sets server certificate, client certificate, and client private key.
      * 
-     * @param root_ca_pem Certification of Root CA in PEM format.
      * @param client_cert_pem Client certification in PEM format.
      * @param client_private_key Client private key in PEM format.
      */
-    void set_cert_key(const char* root_ca_pem = NULL,
-            const char* client_cert_pem = NULL, const char* client_private_key = NULL);
+    void set_client_cert_key(const char* client_cert_pem, const char* client_private_key_pem);
 
     /** Connects TLS socket to a remote host
      *

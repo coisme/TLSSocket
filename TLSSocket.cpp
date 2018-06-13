@@ -29,16 +29,14 @@ TLSSocket::~TLSSocket() {
     close();
 }
 
-void TLSSocket::set_root_ca_pem(const char* ssl_ca_pem) {
+void TLSSocket::set_root_ca_cert(const char* root_ca_pem) {
     _ssl_ca_pem = ssl_ca_pem;
 }
 
-void TLSSocket::set_cert_key(const char* root_ca_pem,
-            const char* client_cert_pem, 
-            const char* client_private_key) {
-    _ssl_ca_pem = root_ca_pem;
+void TLSSocket::set_cert_key(const char* client_cert_pem, 
+        const char* client_private_key_pem) {
     _ssl_cli_pem = client_cert_pem;
-    _ssl_pk_pem = client_private_key;
+    _ssl_pk_pem = client_private_key_pem;
 }
 
 
