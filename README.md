@@ -1,6 +1,6 @@
 # TLSSocket - Brings TLS connection into your mbed app.
 
-This library is created based on mbed-os-example-tls-tls-client project.
+This library is created based on [mbed-os-example-tls-tls-client](https://os.mbed.com/teams/mbed-os-examples/code/mbed-os-example-tls-tls-client/) project.
 
 # How to use it
 ```
