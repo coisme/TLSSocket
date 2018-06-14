@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "TLSSocket.h"
+#include "mbed.h"
 
 #define TRACE_GROUP "TLSx"
 #include "mbed-trace/mbed_trace.h"
@@ -203,14 +204,23 @@ nsapi_error_t TLSSocket::send(const void *data, nsapi_size_t size) {
 nsapi_size_or_error_t TLSSocket::recv(void *data, nsapi_size_t size) {
     int ret = 0;
     unsigned int offset = 0;
+
+    Timer t;
+    t.start();
+
     do {
         ret = mbedtls_ssl_read(_ssl, (unsigned char *) data + offset,
                                 size - offset);
         if (ret > 0)
             offset += ret;
-    } while ((0 < ret && ret < size) || ret == MBEDTLS_ERR_SSL_WANT_READ || 
+        // Check timeout
+        if (_timeout > 0 && t.read_ms() > _timeout) {
+            break;
+        }
+    } while ((0 < ret && offset < size) || ret == MBEDTLS_ERR_SSL_WANT_READ || 
             ret == MBEDTLS_ERR_SSL_WANT_WRITE);
-    if ((ret < 0) && (ret != MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)) {
+    if ((ret < 0) && (ret != MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) 
+            && (ret != MBEDTLS_ERR_SSL_WANT_READ)) {
         print_mbedtls_error("mbedtls_ssl_read", ret);
         return ret;
     }
