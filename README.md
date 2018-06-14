@@ -29,7 +29,7 @@ socket.close();
 ```
 # Examples
 
-Please see the example programs.
+Please see these example programs.
 - [Hello-TLSSocket](https://os.mbed.com/users/coisme/code/Hello-TLSSocket/) HTTP Client with TLS connection.
 - [HelloMQTT](https://os.mbed.com/users/coisme/code/HelloMQTT/) MQTT Client with TLS connection.
 
